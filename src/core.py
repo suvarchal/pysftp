@@ -115,7 +115,7 @@ async def entry_point(pattern, pool):
         # tqdm.tqdm.write(f"Downloaded: {monitor.total_files} files, Avg. Speed:  {monitor.avg_speed / 1024} kB/s")
     #tqdm.tqdm.write(f"Downloaded: {monitor.total_files} files, Avg. Speed:  {hr_size(monitor.avg_speed)}/s")
     return f"\nDownloaded: {monitor.total_files} files, Avg. Speed:  {hr_size(monitor.avg_speed)}/s, " \
-           f"Total time: {time.time() - monitor.start_time} seconds"
+           f"Total time: {time.time() - monitor.start_time:.2f} seconds"
 
 
 class ConnectionHolder(object):
@@ -215,7 +215,7 @@ class Pool(object):
 async def async_main(pattern_g, pool_g):
     return_str = await entry_point(pattern=pattern_g, pool=pool_g)
     tqdm.tqdm.write(return_str)
-    pool.close()
+    pool_g.close()
 
 
 
