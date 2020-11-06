@@ -20,7 +20,7 @@ setuptools.setup(
     python_requires='>=3.6',
     install_requires=[
         'Click', 'parse', 'tqdm', 'asyncssh',
-        'parse'
+        'parse', 'uvloop'
     ],
     entry_points='''
         [console_scripts]
