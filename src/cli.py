@@ -9,9 +9,9 @@ def cli():
 
     username, server =  sys.argv[1].split('@')
     pattern = sys.argv[2]
+    dst = sys.argv[3]
     pool = Pool(server, username=username)
-
-    asyncio.run(async_main(pattern, pool))
+    asyncio.run(async_main(pattern, dst, pool))
 
 if __name__ == '__main__':
     cli()

@@ -1,5 +1,4 @@
 import asyncio
-import sys
 import time
 from os.path import sep
 
@@ -15,6 +14,37 @@ try:
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 except ImportError:
     print(' is not available, using default loop')
+
+
+def random_name(num=5, starts_with=""):
+    import string
+    import random
+    num = num if starts_with == "" else num - 1
+    return starts_with + "".join(random.choice(string.ascii_letters) for _ in range(num))
+
+
+def parse_src_format(src_path):
+    src_path_split = src_path.split(os.sep)
+    post_fix = []
+    pre_fix = []
+    parse_it = False
+    dirname = random_name(3, "d")
+    for i, x in enumerate(src_path_split[:-1]):  # is len(pa_split) == 1 skip
+        if not parse_it:
+            if "*" in x:
+                parse_it = True
+                prefix_ind = i
+        if parse_it:
+            post_fix.append("{" + f"{dirname}{i}" + "}")
+        else:
+            pre_fix.append(x)
+
+    parse_format = os.sep.join([*pre_fix, *post_fix, "{file}"])
+    # print(pre_fix, post_fix)
+    # dst_path = dst_path + os.sep.join(*post_fix)
+    # print(dst_path)
+    # os.makedirs(dst_path, exist_ok=True)
+    return parse_format
 
 
 class ProgressMonitor(object):
@@ -62,7 +92,7 @@ class ProgressMonitor(object):
         else:  # initalize tqdm for a downloading object
             desc = src_fi.split(sep)[-1]
             self.current_dict[src_fi] = tqdm.tqdm(total=total_bytes, desc=desc, disable=None, unit='B', unit_scale=True,
-                                                  unit_divisor=1024, ascii=True, miniters=1) #, leave=False)
+                                                  unit_divisor=1024, ascii=True, miniters=1)  # , leave=False)
             # miniters decides how often we call progress
             self.current_dict[src_fi].prev_bytes = 0.0  # is this necessary
 
@@ -91,13 +121,22 @@ def hr_size(size):
     return f"{size:.2f} {units[i]}"
 
 
-async def file_download(path, pool, progress_handler=None):
+async def file_download(path, dst, pool, progress_handler=None):
     conn_client = await pool.acquire(start_client=True)
     async with conn_client as sftp:
-        res = await sftp.get(path, progress_handler=progress_handler) #, block_size=131072)
+        res = await sftp.get(path, localpath=dst, progress_handler=progress_handler)  # , block_size=131072)
 
+def make_dst_dir(src_format, src, dst):
+    import parse
+    local = [dst]
+    p = parse.parse(src_format, src)
+    ex = [p.named[v] for v in sorted(p.named)[:-1]]
+    local.extend(ex)
+    dst = os.sep.join(local)
+    os.makedirs(dst, exist_ok=True)
+    return dst
 
-async def entry_point(pattern, pool):
+async def entry_point(pattern, dst, pool):
     conn_client = await pool.acquire(start_client=True)  # why cant this be written in same line
     async with conn_client as sftp:
         res = await sftp.glob(pattern)
@@ -106,14 +145,17 @@ async def entry_point(pattern, pool):
     # tasks = (asyncio.create_task(file_download(fi, pool, progress_handler=monitor.progress_handler)) for fi in
     #         res)  # best option
     # tasks can be used to give names, etc.
-    tasks = [file_download(fi, pool, progress_handler=monitor.progress_handler) for fi in res]  # best option
+
+    src_formatter = parse_src_format(pattern)
+
+    tasks = [file_download(fi, make_dst_dir(src_formatter, fi, dst), pool, progress_handler=monitor.progress_handler) for fi in res]  # best option
     await asyncio.gather(*tasks)
     # asyncio swaps corps in tasks any ways
     # tasks can have a name and a callback that is cool to give coarse grained status without using progeress handler
-    #for t in asyncio.as_completed(tasks):
+    # for t in asyncio.as_completed(tasks):
     #    await t
-        # tqdm.tqdm.write(f"Downloaded: {monitor.total_files} files, Avg. Speed:  {monitor.avg_speed / 1024} kB/s")
-    #tqdm.tqdm.write(f"Downloaded: {monitor.total_files} files, Avg. Speed:  {hr_size(monitor.avg_speed)}/s")
+    # tqdm.tqdm.write(f"Downloaded: {monitor.total_files} files, Avg. Speed:  {monitor.avg_speed / 1024} kB/s")
+    # tqdm.tqdm.write(f"Downloaded: {monitor.total_files} files, Avg. Speed:  {hr_size(monitor.avg_speed)}/s")
     return f"\nDownloaded: {monitor.total_files} files, Avg. Speed:  {hr_size(monitor.avg_speed)}/s, " \
            f"Total time: {time.time() - monitor.start_time:.2f} seconds"
 
@@ -198,7 +240,7 @@ class Pool(object):
                 if c.conn is not None:
                     c.conn.close()
             except Exception as ex:
-                #print(ex)
+                # print(ex)
                 pass
 
     async def __aenter__(self):
@@ -212,17 +254,22 @@ class Pool(object):
     #     return self._async__init__().__await__()
 
 
-async def async_main(pattern_g, pool_g):
-    return_str = await entry_point(pattern=pattern_g, pool=pool_g)
+import os
+
+
+async def async_main(pattern_g, dst, pool_g):
+    if not os.path.exists(dst):
+        raise Exception(f"Desitination directory {dst} doesn't exist.")
+    return_str = await entry_point(pattern=pattern_g, dst=dst, pool=pool_g)
     tqdm.tqdm.write(return_str)
     pool_g.close()
 
 
-
-#start2 = time.time()
+# start2 = time.time()
 
 if __name__ == '__main__':
     import sys
+
     username, server = sys.argv[1].split("@")
     pattern = sys.argv[2]
     try:
@@ -232,5 +279,5 @@ if __name__ == '__main__':
         sys.exit('SFTP operation failed what?: ' + str(exc))
 
 # print("End:", time.time(), start2)
-#print(f"total time: {time.time() - start2} seconds", flush=True)
+# print(f"total time: {time.time() - start2} seconds", flush=True)
 # 2
