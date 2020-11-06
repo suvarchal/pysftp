@@ -92,27 +92,15 @@ def hr_size(size):
 
 
 async def file_download(path, pool, progress_handler=None):
-    # conn_context = await pool.acquire()
-    # async with conn_context as conn:
-    #     async with conn.start_sftp_client() as sftp:
-    #         res = await sftp.stat(path)
-    #         #print(res)
     conn_client = await pool.acquire(start_client=True)
     async with conn_client as sftp:
         res = await sftp.get(path, progress_handler=progress_handler) #, block_size=131072)
 
 
 async def entry_point(pattern, pool):
-    # conn_context = await pool.acquire() # why cant this be written in same line
-    # async with conn_context as conn:
-    #     async with conn.start_sftp_client() as sftp:
-    #         res = await sftp.glob(pattern)  # "/pool/data/CMIP6/data/ScenarioMIP/AWI/AWI-CM-1-1-MR/ssp370/r1i1p1f1/Odec/thetao/gn/v20181218/*.nc")
-    # print(res)
     conn_client = await pool.acquire(start_client=True)  # why cant this be written in same line
     async with conn_client as sftp:
         res = await sftp.glob(pattern)
-        # "/pool/data/CMIP6/data/ScenarioMIP/AWI/AWI-CM-1-1-MR/ssp370/r1i1p1f1/Odec/thetao/gn/v20181218/*.nc")
-    #print(res)
 
     monitor = ProgressMonitor()
     # tasks = (asyncio.create_task(file_download(fi, pool, progress_handler=monitor.progress_handler)) for fi in
@@ -224,22 +212,24 @@ class Pool(object):
     #     return self._async__init__().__await__()
 
 
-async def async_main():
-    pool = Pool('mistral.dkrz.de', username="b380667")
-    #pattern = "/pool/data/CMIP6/data/ScenarioMIP/AWI/AWI-CM-1-1-MR/ssp370/r1i1p1f1/Odec/thetao/gn/v20181218/*.nc"
-    pattern = "/pf/b/b380667/lat_20*.nc"
-    return_str = await entry_point(pattern=pattern, pool=pool)
+async def async_main(pattern_g, pool_g):
+    return_str = await entry_point(pattern=pattern_g, pool=pool_g)
     tqdm.tqdm.write(return_str)
     pool.close()
 
 
+
 #start2 = time.time()
 
-try:
-    # asyncio.get_event_loop().run_until_complete(run_client(downfile))
-    asyncio.get_event_loop().run_until_complete(async_main())
-except (OSError, asyncssh.Error) as exc:
-    sys.exit('SFTP operation failed what?: ' + str(exc))
+if __name__ == '__main__':
+    import sys
+    username, server = sys.argv[1].split("@")
+    pattern = sys.argv[2]
+    try:
+        pool = Pool(server, username=username)
+        asyncio.get_event_loop().run_until_complete(async_main(pattern, pool))
+    except (OSError, asyncssh.Error) as exc:
+        sys.exit('SFTP operation failed what?: ' + str(exc))
 
 # print("End:", time.time(), start2)
 #print(f"total time: {time.time() - start2} seconds", flush=True)
