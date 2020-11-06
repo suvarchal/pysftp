@@ -1,4 +1,17 @@
+from .core import Pool, async_main
+import asyncio
+
 def cli():
-    print('Not Yet')
+    import sys
+    if not len(sys.argv) == 4:
+        print("use as pysftp user@server remotesrc destination")
+        sys.exit(0)
+
+    username, server =  sys.argv[1].split('@')
+    pattern = sys.argv[2]
+    pool = Pool(server, username=username)
+
+    asyncio.run(async_main(pattern, pool))
+
 if __name__ == '__main__':
     cli()
