@@ -129,16 +129,11 @@ async def file_download(path, dst, pool, progress_handler=None):
 def make_dst_dir(src_format, src, dst):
     import parse
     local = [dst]
-    print('local', local)
     p = parse.parse(src_format, src)
-    print('parsed', p)
-    print('befrore sort, sorted', sorted(p.named.keys())[:-1])
     ex = [p.named[k] for k in sorted(p.named.keys())[:-1]] # -1 to skip filename
-    print('sorted', ex)
     local.extend(ex)
     dst = os.sep.join(local)
     os.makedirs(dst, exist_ok=True)
-    print(dst)
     return dst
 
 async def entry_point(pattern, dst, pool):
@@ -152,7 +147,6 @@ async def entry_point(pattern, dst, pool):
     # tasks can be used to give names, etc.
 
     src_formatter = parse_src_format(pattern)
-    print(src_formatter)
     tasks = [file_download(fi, make_dst_dir(src_formatter, fi, dst), pool, progress_handler=monitor.progress_handler) for fi in res]  # best option
     await asyncio.gather(*tasks)
     # asyncio swaps corps in tasks any ways
