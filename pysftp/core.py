@@ -128,8 +128,10 @@ async def file_download(path, dst, pool, progress_handler=None):
 
 async def run_command(command, pool):
     conn = await pool.acquire()
-    async with conn as connection:
-        return await connection.run(command)
+    async with conn as connection: # how not to close
+        out =  await connection.run(command)
+    return out.stdout, out.stderr
+
 
 async def glob_download(path, dst, pool, progress_handler=None):
     pass
