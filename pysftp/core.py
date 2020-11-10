@@ -137,7 +137,7 @@ async def run_command(command, pool):
     return out.stdout, out.stderr
 
 
-async def glob_download(path, dst, poo=-Nonel, filter=None, progress_handler=None):
+async def glob_download(path, dst, pool=None, filter=None, progress_handler=None):
     pass
 
 
@@ -221,14 +221,6 @@ class ConnectionContext(object):
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """ nothing async about it otherwise we need to implement __await__"""
         self.pool.queue.put_nowait(self.conn_holder)  # put connection back to the pool
-
-
-## class ConnectionHolder()
-## """ instead of adding connection in queue if we add a holder
-##     we use a class to hold connection we can add few metrics like
-##     if connection is being used or not, also may be speed of connection etc.
-##     also can be used to start a new connection when needed
-##     also add call back
 
 
 class Pool(object):
